@@ -15,6 +15,8 @@ test-worker-prof: PASS, FLAKY
 [$system==linux]
 
 [$system==macos]
+# https://github.com/nodejs/node/issues/21781
+test-timers-blocking-callback: PASS, FLAKY
 
 [$system==solaris] # Also applies to SmartOS
 
@@ -31,3 +33,5 @@ test-buffer-creation-regression: SKIP
 test-perf-hooks: SKIP
 
 [$arch==arm]
+# https://github.com/nodejs/node/issues/26401#issuecomment-613095719
+test-worker-prof: PASS, FLAKY

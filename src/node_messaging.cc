@@ -389,9 +389,6 @@ Maybe<bool> Message::Serialize(Environment* env,
   for (Local<ArrayBuffer> ab : array_buffers) {
     // If serialization succeeded, we render it inaccessible in this Isolate.
     std::shared_ptr<BackingStore> backing_store = ab->GetBackingStore();
-    // TODO(addaleax): This can/should be dropped once we have V8 8.0.
-    if (!ab->IsExternal())
-      ab->Externalize(backing_store);
     ab->Detach();
 
     array_buffers_.emplace_back(std::move(backing_store));
@@ -868,7 +865,12 @@ void MessagePort::Drain(const FunctionCallbackInfo<Value>& args) {
 }
 
 void MessagePort::ReceiveMessage(const FunctionCallbackInfo<Value>& args) {
-  CHECK(args[0]->IsObject());
+  Environment* env = Environment::GetCurrent(args);
+  if (!args[0]->IsObject() ||
+      !env->message_port_constructor_template()->HasInstance(args[0])) {
+    return THROW_ERR_INVALID_ARG_TYPE(env,
+        "First argument needs to be a MessagePort instance");
+  }
   MessagePort* port = Unwrap<MessagePort>(args[0].As<Object>());
   if (port == nullptr) {
     // Return 'no messages' for a closed port.
@@ -935,7 +937,8 @@ Local<FunctionTemplate> GetMessagePortConstructorTemplate(Environment* env) {
   {
     Local<FunctionTemplate> m = env->NewFunctionTemplate(MessagePort::New);
     m->SetClassName(env->message_port_constructor_string());
-    m->InstanceTemplate()->SetInternalFieldCount(1);
+    m->InstanceTemplate()->SetInternalFieldCount(
+        MessagePort::kInternalFieldCount);
     m->Inherit(HandleWrap::GetConstructorTemplate(env));
 
     env->SetProtoMethod(m, "postMessage", MessagePort::PostMessage);
